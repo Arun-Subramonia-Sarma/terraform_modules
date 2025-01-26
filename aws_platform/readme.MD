@@ -1,46 +1,71 @@
-# AWS Network Module
+# EKS Cluster Module
 
-This Terraform module creates an AWS network infrastructure, including:
-- A VPC
-- Public and private subnets
-- An optional NAT Gateway
-- Internet Gateway
-- Route tables and route table associations
+This Terraform module creates an AWS EKS cluster with the following features:
+- Managed EKS cluster
+- Configurable managed node groups
+- IAM roles and policies
+- Support for custom tags and networking configurations
 
 ## Inputs
 
-| Name                  | Description                                | Type           | Default       | Required |
-|-----------------------|--------------------------------------------|----------------|---------------|----------|
-| vpc_cidr             | CIDR block for the VPC                    | `string`       | -             | yes      |
-| azs                  | List of availability zones                | `list(string)` | -             | yes      |
-| public_subnets_cidrs | List of CIDR blocks for public subnets     | `list(string)` | -             | yes      |
-| private_subnets_cidrs| List of CIDR blocks for private subnets    | `list(string)` | -             | yes      |
-| enable_nat_gateway    | Whether to enable NAT Gateway             | `bool`         | `true`        | no       |
-| tags                 | Map of tags to apply to resources         | `map(string)`  | `{}`          | no       |
+| Name           | Description                            | Type               | Default | Required |
+|----------------|----------------------------------------|--------------------|---------|----------|
+| cluster_name   | The name of the EKS cluster            | `string`           | -       | yes      |
+| region         | AWS region for the EKS cluster         | `string`           | -       | yes      |
+| vpc_id         | The ID of the VPC for the EKS cluster  | `string`           | -       | yes      |
+| subnet_ids     | A list of subnet IDs                   | `list(string)`     | -       | yes      |
+| node_groups    | Map of node group configurations       | `map(object({...}))| -       | yes      |
+| enable_logging | Enable control plane logging           | `bool`             | true    | no       |
+| tags           | Map of tags                           | `map(string)`      | `{}`    | no       |
 
 ## Outputs
 
-| Name              | Description                          |
-|-------------------|--------------------------------------|
-| vpc_id           | ID of the created VPC               |
-| public_subnets   | IDs of public subnets               |
-| private_subnets  | IDs of private subnets              |
-| nat_gateway_id   | ID of the NAT Gateway (if enabled)  |
-| route_table_public | ID of the public route table       |
+| Name               | Description                       |
+|--------------------|-----------------------------------|
+| cluster_id         | ID of the EKS cluster            |
+| cluster_endpoint   | API endpoint for the EKS cluster |
+| cluster_arn        | ARN of the EKS cluster           |
+| node_group_arns    | ARNs of the managed node groups   |
 
 ## Usage
 
 ```hcl
-module "aws_network" {
-  source = "./aws-network"
+module "eks_cluster" {
+  source = "./eks-cluster"
 
-  vpc_cidr             = "10.0.0.0/16"
-  azs                  = ["us-east-1a", "us-east-1b"]
-  public_subnets_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
-  private_subnets_cidrs= ["10.0.3.0/24", "10.0.4.0/24"]
-  enable_nat_gateway    = true
+  cluster_name   = "my-eks-cluster"
+  region         = "us-east-1"
+  vpc_id         = "vpc-12345678"
+  subnet_ids     = ["subnet-abc123", "subnet-def456"]
+  enable_logging = true
   tags = {
     Environment = "dev"
-    Project     = "example"
+    Project     = "my-project"
+  }
+  node_groups = {
+    group1 = {
+      desired_size   = 2
+      max_size       = 3
+      min_size       = 1
+      instance_types = ["t3.medium"]
+      labels = {
+        role = "web"
+      }
+      tags = {
+        Name = "web-nodes"
+      }
+    }
+    group2 = {
+      desired_size   = 3
+      max_size       = 5
+      min_size       = 2
+      instance_types = ["t3.medium"]
+      labels = {
+        role = "backend"
+      }
+      tags = {
+        Name = "backend-nodes"
+      }
+    }
   }
 }
